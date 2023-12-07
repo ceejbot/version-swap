@@ -1,0 +1,11 @@
+[package]
+name = "version-swap"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chksum = "0.2.2"
+clap = { version = "4.4.11", features = ["derive", "wrap_help"] }
+eyre = "0.6.9"
+owo-colors = "3.5.0"
+subprocess = "0.2.9"
