@@ -1,1 +1,5 @@
 /target
+version-swap.log
+.env
+.vscode
+/releases
