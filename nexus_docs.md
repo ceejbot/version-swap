@@ -92,6 +92,14 @@ Check your setup. Run `version-swap check` to verify that you've got everything 
 - `version-swap launch`: Launch the game at whatever version it is right now using either SKSE or the game executable directly. Pass the `--no-skse` flag to skip SKSE, like this: `version-swap launch --no-skse`.
 - `version-swap help`: Show all tool help, which includes options for making the tool quieter or noisier.
 
+## FAQ
+
+__Q:__ Can I use this to swap between 1.6.640 and 1.5.97?
+__A:__ Yes. The tool will still assume you need the fishing esl and the resource pack esl, though.
+
+__Q:__ Can I have more than two versions set up for swapping?
+__A:__ Yes, as many as you like. In the short term, until 1.6.1130 is fully supported by mods, I personally will have 1.5.97, 1.6.640, and 1.6.1130 set up.
+
 ## Credits and permissions
 
 This tool was inspired by [Skyrim Lite Loader](https://www.nexusmods.com/skyrimspecialedition/mods/58271), though it shares no code with it. It was written at the request of some people on the subreddit Discord who knew I'd be a sucker.
