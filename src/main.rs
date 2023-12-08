@@ -26,6 +26,9 @@ pub struct Args {
     /// The game directory to target. Defaults to the directory the tool is in.
     #[clap(long, short, global = true, default_value = ".")]
     gamedir: String,
+    /// Turn off logging to a file
+    #[clap(long, short, global = true)]
+    nolog: bool,
     /// What to do.
     #[clap(subcommand)]
     cmd: Command,
@@ -34,7 +37,11 @@ pub struct Args {
 #[derive(Clone, Debug, Subcommand)]
 pub enum Command {
     /// Check that your version swap data is set up properly.
-    Check,
+    Check {
+        /// If you want the program to wait until you hit the spacebar.
+        #[clap(long, short, global = true)]
+        wait: bool,
+    },
     /// Set up the game directory to run a specific version and then launch the game.
     Run { version: String },
     /// Set up the game directory to run a specific version.
@@ -94,7 +101,10 @@ fn initialize_logging(args: &Args) -> Result<(), Report> {
 /// Collect relevant files in the given subdirectory of Versions, including
 /// any plain files in a `data` subdirectory.
 fn files_to_copy(dirname: &PathBuf, recurse: bool) -> Result<Vec<PathBuf>> {
-    let files: Vec<PathBuf> = std::fs::read_dir(dirname)?
+    let canonical = dirname
+        .canonicalize()
+        .context(format!("Cleaning up the path {}", dirname.display()))?;
+    let files: Vec<PathBuf> = std::fs::read_dir(canonical)?
         .filter_map(|xs| {
             let Ok(entry) = xs else {
                 return None;
@@ -120,7 +130,7 @@ fn files_to_copy(dirname: &PathBuf, recurse: bool) -> Result<Vec<PathBuf>> {
     Ok(files)
 }
 
-fn check_setup(args: &Args) -> Result<(), Report> {
+fn check_setup(args: &Args, wait: bool) -> Result<(), Report> {
     log::info!("Checking the setup in <b><green>{}</>", args.gamedir);
 
     // collect directories matching the pattern `skyrim_*` in "{args.gamedir}/Versions"
@@ -169,7 +179,7 @@ fn check_setup(args: &Args) -> Result<(), Report> {
             version_good = false;
         }
 
-        // look for skse64_steam_loader.dll in game dir
+        // Only 1.5.97 needs this file...
         if version_string == "1.5.97" {
             let loader_path = format!("{}/skse64_steam_loader.dll", args.gamedir);
             if PathBuf::from(&loader_path).exists() {
@@ -182,10 +192,8 @@ fn check_setup(args: &Args) -> Result<(), Report> {
 
         let files = files_to_copy(&version_dir, true)?;
         for mandatory in required.as_slice() {
-            if files.contains(&PathBuf::from(format!(
-                "{}/{mandatory}",
-                version_dir.display()
-            ))) {
+            let mpath: PathBuf = vec![&version_dir, &mandatory.into()].iter().collect();
+            if files.contains(&mpath) {
                 log::debug!("    ✔️  <b>{mandatory}</> found");
             } else {
                 version_good = false;
@@ -198,6 +206,12 @@ fn check_setup(args: &Args) -> Result<(), Report> {
         } else {
             log::warn!("Problems found with <blue><bold>skyrim-{version_string}</>!")
         }
+    }
+
+    if wait {
+        let mut buf = String::new();
+        println!("\nPress enter to quit...");
+        std::io::stdin().read_line(&mut buf)?;
     }
 
     Ok(())
@@ -278,7 +292,7 @@ fn main() -> Result<(), Report> {
     initialize_logging(&args)?;
 
     match args.cmd {
-        Command::Check => check_setup(&args)?,
+        Command::Check { wait } => check_setup(&args, wait)?,
         Command::Run { ref version } => run_version(version.as_str(), &args)?,
         Command::Swap { ref version } => swap_to(version, &args)?,
         Command::Launch => launch(&args)?,
