@@ -1,6 +1,7 @@
 set windows-shell := ["pwsh.exe", "-Command"]
 set shell := ["bash", "-uc"]
 
+# List available recipes.
 _help:
 	@just -l
 
@@ -18,8 +19,8 @@ test:
 
 # Clippy has opinions. Find out what they are.
 @lint:
-	cargo clippy --all-targets --no-deps
-	cargo +nightly fmt --fix
+	cargo clippy --all-targets --no-deps --fix --allow-dirty
+	cargo +nightly fmt
 
 # Set the crate version and tag the repo to match. Requires bash.
 tag VERSION:
@@ -31,6 +32,24 @@ tag VERSION:
     git tag "v{{VERSION}}"
     echo "Release tagged for version v{{VERSION}}"
 
-# Build the mod containing the folder structure to help people get going.
+# Build a mod archive for the Nexus.
+[unix]
 archive:
-	echo "Haven't written this yet."
+    #!/usr/bin/env bash
+    set -e
+    version=$(tomato get package.version Cargo.toml)
+    release_name=version-swap_v${version}
+    mkdir -p "releases/$release_name"
+    cp -rp root/* "releases/${release_name}/"
+    cp -p target/release/version-swap.exe "releases/${release_name}/"
+    cd releases
+    rm -f "$release_name".7z
+    7z a "$release_name".7z "$release_name"
+    rm -rf "$release_name"
+    cd ..
+    echo "Mod archive for v${version} ready at releases/${release_name}.7z"
+
+# Remind you to run this in WSL.
+[windows]
+archive: release
+	write-host "You need to run this in WSL to get bash."

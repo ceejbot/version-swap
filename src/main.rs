@@ -93,16 +93,15 @@ fn initialize_logging(args: &Args) -> Result<(), Report> {
 
 /// Collect relevant files in the given subdirectory of Versions, including
 /// any plain files in a `data` subdirectory.
-fn files_to_copy(dirname: &PathBuf) -> Result<Vec<PathBuf>> {
+fn files_to_copy(dirname: &PathBuf, recurse: bool) -> Result<Vec<PathBuf>> {
     let files: Vec<PathBuf> = std::fs::read_dir(dirname)?
         .filter_map(|xs| {
             let Ok(entry) = xs else {
                 return None;
             };
             if entry.path().is_dir() {
-                if entry.file_name().eq_ignore_ascii_case("data") {
-                    // Note the bug.
-                    Some(files_to_copy(&entry.path()).unwrap_or_default())
+                if recurse && entry.file_name().eq_ignore_ascii_case("data") {
+                    Some(files_to_copy(&entry.path(), false).unwrap_or_default())
                 } else {
                     None
                 }
@@ -152,25 +151,11 @@ fn check_setup(args: &Args) -> Result<(), Report> {
         "steam_api64.dll",
         "data/ccBGSSSE001-Fish.esm",
         "data/_ResourcePack.esl",
-        // "skse64_steam_loader.dll", <-- does 1.5.97 need this?
     ];
 
     for (version_dir, version_string) in versions {
         let mut version_good = true;
         log::info!("Checking game version <blue><bold>{version_string}</>");
-        let files = files_to_copy(&version_dir)?;
-        for mandatory in required.as_slice() {
-            if files.contains(&PathBuf::from(format!(
-                "{}/{mandatory}",
-                version_dir.display()
-            ))) {
-                log::debug!("    ✔️  <b>{mandatory}</> found");
-            } else {
-                version_good = false;
-                log::warn!("    ⚠️  <b>{mandatory}</> missing");
-            }
-        }
-
         let skse_dll = format!("skse64_{}.dll", version_string.replace('.', "_"));
         let skse_expected = format!(
             "{}/skse64_{}.dll",
@@ -180,12 +165,36 @@ fn check_setup(args: &Args) -> Result<(), Report> {
         if PathBuf::from(&skse_expected).exists() {
             log::debug!("    ✔️  <b>{skse_dll}</> found");
         } else {
-            log::warn!(" ⚠️  missing <b>{skse_dll}</>");
+            log::warn!(" ⚠️  missing <red><b>{skse_dll}</>");
             version_good = false;
         }
 
+        // look for skse64_steam_loader.dll in game dir
+        if version_string == "1.5.97" {
+            let loader_path = format!("{}/skse64_steam_loader.dll", args.gamedir);
+            if PathBuf::from(&loader_path).exists() {
+                log::debug!("    ✔️  <b>skse64_steam_loader.dll</> found");
+            } else {
+                log::warn!(" ⚠️  missing <red><b>skse64_steam_loader.dll</>");
+                version_good = false;
+            }
+        }
+
+        let files = files_to_copy(&version_dir, true)?;
+        for mandatory in required.as_slice() {
+            if files.contains(&PathBuf::from(format!(
+                "{}/{mandatory}",
+                version_dir.display()
+            ))) {
+                log::debug!("    ✔️  <b>{mandatory}</> found");
+            } else {
+                version_good = false;
+                log::warn!("    ⚠️  <red><b>{mandatory}</> missing");
+            }
+        }
+
         if version_good {
-            log::info!("SkyrimSE <blue><bold>{version_string}</> ready to run.\n");
+            log::info!("SkyrimSE <blue><bold>{version_string}</> ready for swapping.\n");
         } else {
             log::warn!("Problems found with <blue><bold>skyrim-{version_string}</>!")
         }
@@ -227,7 +236,7 @@ fn copy_file_with_check(origin: PathBuf, dest: PathBuf) -> Result<(), Report> {
 fn swap_to(version: &str, args: &Args) -> Result<(), Report> {
     log::info!("Setting up the game directory for version <b>{version}</b>.");
     let version_dir = format!("{}/Versions/skyrim-{}/", args.gamedir, version);
-    let files = files_to_copy(&PathBuf::from(&version_dir))?;
+    let files = files_to_copy(&PathBuf::from(&version_dir), true)?;
     for f in files {
         let basename = f.to_string_lossy().replace(&version_dir, "");
         let dest = format!("{}{}", args.gamedir, basename);

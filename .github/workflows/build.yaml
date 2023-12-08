@@ -1,0 +1,52 @@
+name: Build version-swapper
+on:
+    push:
+        tags:
+            - "v*"
+    workflow_dispatch:
+permissions:
+    contents: write
+
+env:
+    CARGO_TERM_COLOR: always
+
+jobs:
+    compile:
+        name: build plugin
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v3
+            # - uses: extractions/setup-just@v1
+            - uses: actions/cache@v3
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-
+                      ${{ runner.os }}-
+
+            - name: compile!
+              run: cargo build --release
+
+            - name: build mod directory
+              shell: bash
+              run: |
+                  mkdir -p version-swap
+                  cp -rp root/* version-swap/
+                  cp target/release/version-swap.exe version-swap/
+
+            - name: 7zip compress it
+              run: 7z a version-swap.7z ./version-swap
+
+            - name: create a tagged release and upload the archive
+              uses: ncipollo/release-action@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  name: version-swap ${{ github.ref_name }}
+                  tag: ${{ github.ref_name }}
+                  draft: true
+                  artifacts: "version-swap.7z"
