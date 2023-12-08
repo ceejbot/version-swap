@@ -70,7 +70,7 @@ __STEP 5:__ Check your setup. Run `version-swap check` to verify that you've got
 
 ## Building
 
-This is a Rust project. To build, start by installing the Rust toolchain with [rustup](https://rustup.rs) then run `cargo build`. There are some development conveniences available in the [justfile](https://just.systems). Run `cargo install just` to take advantage of them.
+This is a Rust project. To build, start by installing the Rust toolchain with [rustup](https://rustup.rs) then run `cargo build`. There are some development conveniences available in the [justfile](https://just.systems). Run `cargo install just` to take advantage of them. While Skyrim only runs on Windows, the tool can be built and run on any OS Rust supports. I've been testing by running it against a game installation mounted through samba on an ARM Mac laptop.
 
 The source is in a single file and quite short, but you can generate and read the usual programmer documentation by running `cargo doc --open`.
 
