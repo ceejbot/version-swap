@@ -39,7 +39,7 @@ pub enum Command {
     Run { version: String },
     /// Set up the game directory to run a specific version.
     Swap { version: String },
-    /// Launch the game using either SKSE or the game executable directly.
+    /// Launch the game as-is using either SKSE or the game executable directly.
     Launch,
 }
 
