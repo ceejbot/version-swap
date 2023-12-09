@@ -41,7 +41,9 @@ archive:
     release_name=version-swap_v${version}
     mkdir -p "releases/$release_name"
     cp -rp root/* "releases/${release_name}/"
+    find "releases/${release_name}/" -name .keep -type f -delete
     cp -p target/release/version-swap.exe "releases/${release_name}/"
+    cp -p target/release/version_swap.pdb "releases/${release_name}/"
     cd releases
     rm -f "$release_name".7z
     7z a "$release_name".7z "$release_name"
@@ -51,5 +53,10 @@ archive:
 
 # Remind you to run this in WSL.
 [windows]
-archive: release
+@archive:
 	write-host "You need to run this in WSL to get bash."
+
+[windows]
+install: release
+    cp target/release/version-swap.exe "G:\Vortex Mods\skyrimse\version-swap\root"
+    cp target/release/version_swap.pdb "G:\Vortex Mods\skyrimse\version-swap\root"

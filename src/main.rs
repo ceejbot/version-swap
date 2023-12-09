@@ -100,10 +100,7 @@ fn initialize_logging(args: &Args) -> Result<(), Report> {
 /// Collect relevant files in the given subdirectory of Versions, including
 /// any plain files in a `data` subdirectory.
 fn files_to_copy(dirname: &PathBuf, recurse: bool) -> Result<Vec<PathBuf>> {
-    let canonical = dirname
-        .canonicalize()
-        .context(format!("Cleaning up the path {}", dirname.display()))?;
-    let files: Vec<PathBuf> = std::fs::read_dir(canonical)?
+    let files: Vec<PathBuf> = std::fs::read_dir(dirname)?
         .filter_map(|xs| {
             let Ok(entry) = xs else {
                 return None;
@@ -209,23 +206,34 @@ fn check_setup(args: &Args) -> Result<(), Report> {
     Ok(())
 }
 
-fn copy_file_with_check(origin: PathBuf, dest: PathBuf) -> Result<(), Report> {
-    let mut hasher = crc32fast::Hasher::new();
-    let buf = std::fs::read(&origin)?;
-    hasher.update(buf.as_slice());
-    let from_chksum = hasher.finalize();
+fn copy_file_with_check(origin: &PathBuf, dest: &PathBuf) -> Result<(), Report> {
+    let buf = std::fs::read(origin)?;
+    let from_chksum = crc32fast::hash(buf.as_slice());
     drop(buf);
 
-    if let Some(destdir) = &dest.parent() {
+    if let Some(destdir) = dest.parent() {
         // I remain sad this is not named mkdirp().
         std::fs::create_dir_all(destdir)?;
     }
 
+    log::info!("   copying {} to {}", origin.display(), dest.display());
+
+    if dest.exists() {
+        let mut backup = PathBuf::from(dest);
+        backup.set_extension("bak");
+        std::fs::rename(dest, &backup).context(format!(
+            "backing up {} to {}",
+            dest.display(),
+            backup.display()
+        ))?;
+    }
+
     std::fs::copy(&origin, &dest).context(format!(
-        "copying {:?} to {}",
-        origin.file_name().unwrap_or(origin.as_os_str()),
-        dest.parent().unwrap_or(&dest).display()
+        "copying {} to {}",
+        origin.display(),
+        dest.display()
     ))?;
+
     let destbuf = std::fs::read(&dest)?;
     let dest_chksum = crc32fast::hash(destbuf.as_slice());
     drop(destbuf);
@@ -247,14 +255,16 @@ fn swap_to(version: &str, args: &Args) -> Result<(), Report> {
     version_dir.push(format!("skyrim-{version}"));
     let files = files_to_copy(&PathBuf::from(&version_dir), true)?;
     for f in files {
-        let Some(basename) = pathdiff::diff_paths(&f, &version_dir) else {
+        let Some(destination) = pathdiff::diff_paths(&f, &version_dir) else {
             log::info!("    skipping {}", f.display());
             continue;
         };
-        let mut dest = PathBuf::from(&args.gamedir);
-        dest.push(&basename);
-        log::debug!("    copying <blue>{}</>", basename.display());
-        copy_file_with_check(f, dest).context("copying into place")?
+        log::debug!("    copying <blue>{}</>", destination.display());
+        copy_file_with_check(&f, &destination).context(format!(
+            " copying {} to {}",
+            f.display(),
+            destination.display()
+        ))?
     }
     log::info!("Ready to run!");
     Ok(())
@@ -290,7 +300,7 @@ impl std::fmt::Display for Command {
         match self {
             Command::Check => write!(f, "check"),
             Command::Run { version } => write!(f, "run {}", version),
-            Command::Swap { version }=> write!(f, "swap {}", version),
+            Command::Swap { version } => write!(f, "swap {}", version),
             Command::Launch => write!(f, "launch"),
         }
     }
@@ -334,7 +344,7 @@ fn main() -> Result<(), Report> {
     };
 
     match result {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(e) => {
             log::error!("version-swap did not complete successfully!");
             log::error!("The command run was <b>{args}</>");

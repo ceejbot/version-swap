@@ -4,6 +4,33 @@
 
 These instructions help you get going with the tool so you can run any version of Skyrim you want to, without stress.
 
+## Installation
+
+Let's start by installing version-swap as a tool in your preferred mod manager.
+
+### Mod Organizer 2
+
+If you are using [Kezyma's Root Builder](https://www.nexusmods.com/skyrimspecialedition/mods/31720) plugin for MO2, you can make a root mod for this tool and avoid having to put files in your game folder. Steps:
+
+1. Make an empty mod in MO2, and name it something useful, like `version-swap`.
+2. Make a folder named `root` inside this new mod.
+2. Unpack the mod archive into the `root` directory.
+4. As you follow the setup steps, put all the files into `root/Versions` and the directories in there.
+
+If you're not using Root Builder, do everything inside the game directory instead of "root". (But consider using Root Builder.)
+
+Next, add an executable for `version-swap.exe`. Make sure you're running the executable from the game directory, not the mod directory! Give it the arguments `wait --check`.
+
+Mine looks like this:
+
+![screenshot of mo2 showing the executable set up](./assets/mo2_setup.png)
+
+Run it to verify that it's working. It will very likely complain that your setup isn't right yet, because we haven't yet copied all the DLLs and executables into place. That's fine for now. If the swapper is running and reporting correctly on the state of your game directory, you can copy that executable setup and modify it to launch the game. Change the arguments to `run 1.5.97` or whichever version you want to swap to and run. Do this as many times as you have versions to swap to.
+
+### Vortex
+
+
+
 ## Set up
 
 We're going to set up version-swap with your mod manager, then make sure it has the data it needs to swap between versions. If you used [Skyrim Lite Loader](https://www.nexusmods.com/skyrimspecialedition/mods/58271) before, this process will be familiar to you. We need to stash more data than we used to, however.
