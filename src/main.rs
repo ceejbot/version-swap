@@ -15,7 +15,7 @@ use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogg
 /// Longer tool help and discussion goes here. This can be multiple lines.
 pub struct Args {
     /// Run the game directly, without SKSE.
-    #[clap(long, short, global = true)]
+    #[clap(long, global = true)]
     no_skse: bool,
     /// Print out more information as the tool runs.
     #[clap(long, short, global = true)]
@@ -30,7 +30,7 @@ pub struct Args {
     #[clap(long, short, global = true, default_value = ".")]
     gamedir: String,
     /// Turn off logging to a file
-    #[clap(long, short, global = true)]
+    #[clap(long, global = true)]
     nolog: bool,
     /// What to do.
     #[clap(subcommand)]
@@ -99,18 +99,14 @@ fn initialize_logging(args: &Args) -> Result<(), Report> {
 
 /// Collect relevant files in the given subdirectory of Versions, including
 /// any plain files in a `data` subdirectory.
-fn files_to_copy(dirname: &PathBuf, recurse: bool) -> Result<Vec<PathBuf>> {
+fn files_to_copy(dirname: &PathBuf) -> Result<Vec<PathBuf>> {
     let files: Vec<PathBuf> = std::fs::read_dir(dirname)?
         .filter_map(|xs| {
             let Ok(entry) = xs else {
                 return None;
             };
             if entry.path().is_dir() {
-                if recurse && entry.file_name().eq_ignore_ascii_case("data") {
-                    Some(files_to_copy(&entry.path(), false).unwrap_or_default())
-                } else {
-                    None
-                }
+                None
             } else if entry.path().ends_with(".DS_Store")
                 || entry.path().extension() == Some(OsStr::new("acf"))
                 || entry.path().extension() == Some(OsStr::new("bsa"))
@@ -151,13 +147,7 @@ fn check_setup(args: &Args) -> Result<(), Report> {
         })
         .collect();
 
-    let required = vec![
-        "SkyrimSE.exe",
-        "skse64_loader.exe",
-        "steam_api64.dll",
-        "data/ccBGSSSE001-Fish.esm",
-        "data/_ResourcePack.esl",
-    ];
+    let required = vec!["SkyrimSE.exe", "skse64_loader.exe", "steam_api64.dll"];
 
     for (version_dir, version_string) in versions {
         let mut version_good = true;
@@ -171,7 +161,7 @@ fn check_setup(args: &Args) -> Result<(), Report> {
         if PathBuf::from(&skse_expected).exists() {
             log::info!("    ✔️  <b>{skse_dll}</> found");
         } else {
-            log::warn!(" ⚠️  missing <red><b>{skse_dll}</>");
+            log::warn!("    ⚠️  missing <red><b>{skse_dll}</>");
             version_good = false;
         }
 
@@ -186,7 +176,7 @@ fn check_setup(args: &Args) -> Result<(), Report> {
             }
         }
 
-        let files = files_to_copy(&version_dir, true)?;
+        let files = files_to_copy(&version_dir)?;
         for mandatory in required.as_slice() {
             let mpath: PathBuf = vec![&version_dir, &mandatory.into()].iter().collect();
             if files.contains(&mpath) {
@@ -251,7 +241,7 @@ fn swap_to(version: &str, args: &Args) -> Result<(), Report> {
     version_dir.push(&args.gamedir);
     version_dir.push("Versions");
     version_dir.push(format!("skyrim-{version}"));
-    let files = files_to_copy(&PathBuf::from(&version_dir), true)?;
+    let files = files_to_copy(&PathBuf::from(&version_dir))?;
     for f in files {
         let Some(destination) = pathdiff::diff_paths(&f, &version_dir) else {
             log::info!("    skipping {}", f.display());

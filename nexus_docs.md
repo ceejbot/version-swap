@@ -6,7 +6,9 @@ These instructions help you get going with the tool so you can run any version o
 
 ## Installation
 
-Let's start by installing version-swap as a tool in your preferred mod manager.
+First, make sure that [BEES](https://www.nexusmods.com/skyrimspecialedition/mods/106441) is installed and enabled for all of the versions of the game you're swapping among. If you don't run this, any plugins with the extended formid ranges will crash your game. It works for everything; you should run it.
+
+Now that you have your game full of bees, let's set up version-swap as a tool in your preferred mod manager.
 
 ### Mod Organizer 2
 
@@ -29,7 +31,7 @@ Run it to verify that it's working. It will very likely complain that your setup
 
 ### Vortex
 
-
+TKTK
 
 ## Set up
 
@@ -64,21 +66,12 @@ Make a folder named `Versions` inside your game directory. Inside this folder, m
 - `SkyrimSE.exe` for 1.5.97
 - the file `steam_api64.dll` from 1.5.97
 - `skse64_loader.exe` from the 1.5.97 of SKSE
-- the empty `_ResourcePack.esl` plugin that came with this tool; docs to be improved here
 
 Then make a second directory, named `skyrim-1.6.1130`. Put the same files inside but for the newer versions of the game.
 
 __Pro tip:__ If a new version of Skyrim is released, you can support it with this tool by making a new directory named `skyrim-*number*` and putting that version's builds of the same files into it.
 
-### Step 4: creations
-
-In each of these subdirectories, make a `data` directory. We'll be stashing the game data that's different here, so the tool can swap them in and out. The new game version has new versions of the four Creation Club mods, but only the Fishing mod has a plugin with incompatible changes. Copy the older version of `ccBGSSSE001-Fish.esm` into the data directory for 1.5.97, and the newer version into the data directory for 1.6.1130. If you don't want to run the fishing creation, leave it out of BOTH directories.
-
-### Step 5: the resource pack plugin
-
-Make sure the empty `_ResourcePack.esl` plugin that came with this tool is in the `data` directory of the `1.5.97` game info. Copy the 1.6.1130 `_ResourcePack.esl` plugin into the matching `data` directory. We need to do this because older game versions crash if they attempt to load that plugin file. You can safely leave the `_ResourcePack.bsa` file in place! The game won't do anything with it without the matching plugin.
-
-### Step 6: review the folder
+### Step 4: review the folder
 
 When you're done, your game folder (or root mod) should include these files:
 
@@ -90,22 +83,16 @@ When you're done, your game folder (or root mod) should include these files:
 ├── skse64_steam_loader.dll
 └── Versions
    ├── skyrim-1.5.97
-   │  ├── data
-   │  │  ├── _ResourcePack.esl
-   │  │  └── ccBGSSSE001-Fish.esm
    │  ├── skse64_loader.exe
    │  ├── SkyrimSE.exe
    │  └── steam_api64.dll
    └── skyrim-1.6.1130
-      ├── data
-      │  ├── _ResourcePack.esl
-      │  └── ccBGSSSE001-Fish.esm
       ├── skse64_loader.exe
       ├── SkyrimSE.exe
       └── steam_api64.dll
 ```
 
-__Pro tip:__ These files are the ones you *must* swap in to run different versions of the game. This tool will copy in *any* files you have in a version folder, so if your setup has additional DLLs you need to swap, version-swap can do it for you. It will not copy entire subdirectories! Use a mod manager for that.
+__Pro tip:__ These files are the ones you *must* swap in to run different versions of the game. This tool will copy in *any* files you have in a version folder, so if your setup has additional DLLs you need to swap, version-swap can do it for you. It will not copy entire subdirectories! Use a mod manager to handle things with nested folders.
 
 ### Step 7: see what the tool says
 
