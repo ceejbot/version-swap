@@ -16,5 +16,6 @@ clap = { version = "4.4.11", features = ["derive", "wrap_help"] }
 crc32fast = "1.3.2"
 eyre = "0.6.9"
 log = "0.4.20"
+pathdiff = "0.2.1"
 simplelog = { git = "https://github.com/Drakulix/simplelog.rs.git", features = ["paris"] }
 subprocess = "0.2.9"

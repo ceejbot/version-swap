@@ -23,6 +23,9 @@ pub struct Args {
     /// Print out only very important information.
     #[clap(long, short, global = true)]
     quiet: bool,
+    /// If you want the program to wait until you hit enter.
+    #[clap(long, short, global = true)]
+    wait: bool,
     /// The game directory to target. Defaults to the directory the tool is in.
     #[clap(long, short, global = true, default_value = ".")]
     gamedir: String,
@@ -37,11 +40,7 @@ pub struct Args {
 #[derive(Clone, Debug, Subcommand)]
 pub enum Command {
     /// Check that your version swap data is set up properly.
-    Check {
-        /// If you want the program to wait until you hit the spacebar.
-        #[clap(long, short, global = true)]
-        wait: bool,
-    },
+    Check,
     /// Set up the game directory to run a specific version and then launch the game.
     Run { version: String },
     /// Set up the game directory to run a specific version.
@@ -130,7 +129,7 @@ fn files_to_copy(dirname: &PathBuf, recurse: bool) -> Result<Vec<PathBuf>> {
     Ok(files)
 }
 
-fn check_setup(args: &Args, wait: bool) -> Result<(), Report> {
+fn check_setup(args: &Args) -> Result<(), Report> {
     log::info!("Checking the setup in <b><green>{}</>", args.gamedir);
 
     // collect directories matching the pattern `skyrim_*` in "{args.gamedir}/Versions"
@@ -207,13 +206,6 @@ fn check_setup(args: &Args, wait: bool) -> Result<(), Report> {
             log::warn!("Problems found with <blue><bold>skyrim-{version_string}</>!")
         }
     }
-
-    if wait {
-        let mut buf = String::new();
-        println!("\nPress enter to quit...");
-        std::io::stdin().read_line(&mut buf)?;
-    }
-
     Ok(())
 }
 
@@ -249,13 +241,20 @@ fn copy_file_with_check(origin: PathBuf, dest: PathBuf) -> Result<(), Report> {
 /// Swap to the requested game version.
 fn swap_to(version: &str, args: &Args) -> Result<(), Report> {
     log::info!("Setting up the game directory for version <b>{version}</b>.");
-    let version_dir = format!("{}/Versions/skyrim-{}/", args.gamedir, version);
+    let mut version_dir = PathBuf::new();
+    version_dir.push(&args.gamedir);
+    version_dir.push("Versions");
+    version_dir.push(format!("skyrim-{version}"));
     let files = files_to_copy(&PathBuf::from(&version_dir), true)?;
     for f in files {
-        let basename = f.to_string_lossy().replace(&version_dir, "");
-        let dest = format!("{}{}", args.gamedir, basename);
-        log::debug!("    copying <blue>{basename}</>");
-        copy_file_with_check(f, PathBuf::from(dest))?
+        let Some(basename) = pathdiff::diff_paths(&f, &version_dir) else {
+            log::info!("    skipping {}", f.display());
+            continue;
+        };
+        let mut dest = PathBuf::from(&args.gamedir);
+        dest.push(&basename);
+        log::debug!("    copying <blue>{}</>", basename.display());
+        copy_file_with_check(f, dest).context("copying into place")?
     }
     log::info!("Ready to run!");
     Ok(())
@@ -286,16 +285,67 @@ fn run_version(version: &str, args: &Args) -> Result<(), Report> {
     Ok(())
 }
 
+impl std::fmt::Display for Command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Command::Check => write!(f, "check"),
+            Command::Run { version } => write!(f, "run {}", version),
+            Command::Swap { version }=> write!(f, "swap {}", version),
+            Command::Launch => write!(f, "launch"),
+        }
+    }
+}
+
+impl std::fmt::Display for Args {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "version-swap ")?;
+        if self.no_skse {
+            write!(f, "--no-skse")?;
+        }
+        if self.verbose {
+            write!(f, "--verbose")?;
+        }
+        if self.quiet {
+            write!(f, "--quiet")?;
+        }
+        if self.wait {
+            write!(f, "--wait")?;
+        }
+        if self.nolog {
+            write!(f, "--nolog")?;
+        }
+        if self.gamedir.as_str() != "." {
+            write!(f, "--gamedir '{}'", self.gamedir)?;
+        }
+        write!(f, " {}", self.cmd)
+    }
+}
+
 /// Process command-line options and act on them.
 fn main() -> Result<(), Report> {
     let args = Args::parse();
     initialize_logging(&args)?;
 
-    match args.cmd {
-        Command::Check { wait } => check_setup(&args, wait)?,
-        Command::Run { ref version } => run_version(version.as_str(), &args)?,
-        Command::Swap { ref version } => swap_to(version, &args)?,
-        Command::Launch => launch(&args)?,
+    let result = match args.cmd {
+        Command::Check => check_setup(&args),
+        Command::Run { ref version } => run_version(version.as_str(), &args),
+        Command::Swap { ref version } => swap_to(version, &args),
+        Command::Launch => launch(&args),
+    };
+
+    match result {
+        Ok(()) => {},
+        Err(e) => {
+            log::error!("version-swap did not complete successfully!");
+            log::error!("The command run was <b>{args}</>");
+            log::error!("{e:#}");
+        }
+    }
+
+    if args.wait {
+        let mut buf = String::new();
+        println!("\nPress enter to quit...");
+        std::io::stdin().read_line(&mut buf)?;
     }
 
     Ok(())
