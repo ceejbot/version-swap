@@ -169,7 +169,7 @@ fn check_setup(args: &Args) -> Result<(), Report> {
             version_string.replace('.', "_")
         );
         if PathBuf::from(&skse_expected).exists() {
-            log::debug!("    ✔️  <b>{skse_dll}</> found");
+            log::info!("    ✔️  <b>{skse_dll}</> found");
         } else {
             log::warn!(" ⚠️  missing <red><b>{skse_dll}</>");
             version_good = false;
@@ -179,7 +179,7 @@ fn check_setup(args: &Args) -> Result<(), Report> {
         if version_string == "1.5.97" {
             let loader_path = format!("{}/skse64_steam_loader.dll", args.gamedir);
             if PathBuf::from(&loader_path).exists() {
-                log::debug!("    ✔️  <b>skse64_steam_loader.dll</> found");
+                log::info!("    ✔️  <b>skse64_steam_loader.dll</> found");
             } else {
                 log::warn!(" ⚠️  missing <red><b>skse64_steam_loader.dll</>");
                 version_good = false;
@@ -190,7 +190,7 @@ fn check_setup(args: &Args) -> Result<(), Report> {
         for mandatory in required.as_slice() {
             let mpath: PathBuf = vec![&version_dir, &mandatory.into()].iter().collect();
             if files.contains(&mpath) {
-                log::debug!("    ✔️  <b>{mandatory}</> found");
+                log::info!("    ✔️  <b>{mandatory}</> found");
             } else {
                 version_good = false;
                 log::warn!("    ⚠️  <red><b>{mandatory}</> missing");
@@ -213,10 +213,8 @@ fn copy_file_with_check(origin: &PathBuf, dest: &PathBuf) -> Result<(), Report> 
 
     if let Some(destdir) = dest.parent() {
         // I remain sad this is not named mkdirp().
-        std::fs::create_dir_all(destdir)?;
+        std::fs::create_dir_all(destdir).context("creating destination directories")?;
     }
-
-    log::info!("   copying {} to {}", origin.display(), dest.display());
 
     if dest.exists() {
         let mut backup = PathBuf::from(dest);
@@ -259,7 +257,7 @@ fn swap_to(version: &str, args: &Args) -> Result<(), Report> {
             log::info!("    skipping {}", f.display());
             continue;
         };
-        log::debug!("    copying <blue>{}</>", destination.display());
+        log::info!("    swapping in <blue>{}</>", destination.display());
         copy_file_with_check(&f, &destination).context(format!(
             " copying {} to {}",
             f.display(),
@@ -278,7 +276,7 @@ fn launch(args: &Args) -> Result<(), Report> {
         "./skse64_loader.exe"
     };
 
-    log::debug!("Launching <b>{}/{exe}</>...", &args.gamedir);
+    log::info!("Launching <b>{}/{exe}</>...", &args.gamedir);
     std::env::set_current_dir(&args.gamedir)
         .context("Setting the working directory to the gamedir")?;
     std::process::Command::new(exe)
